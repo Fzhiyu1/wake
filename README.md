@@ -33,10 +33,11 @@ DeepSeek 1M context (prompt cache 命中)
 ## 快速开始
 
 ```bash
-git clone <this-repo>
+git clone https://github.com/Fzhiyu1/wake.git
 cd wake
 python3 -m venv .venv
-.venv/bin/pip install openai
+.venv/bin/pip install openai                    # daemon / mcp / hook 必须
+.venv/bin/pip install fastapi uvicorn httpx     # 如果要用集成 A (lens 代理)
 cp .env.example .env
 # 填入 DEEPSEEK_API_KEY,从 https://platform.deepseek.com/ 拿
 ```
@@ -51,19 +52,33 @@ cp .env.example .env
 
 ## 三种集成方式
 
-### A. 配合 [lens](https://github.com/Fzhiyu1/lens) 用(每次对话自动注入)
+### A. lens 代理(每次对话自动注入,推荐)
+
+`lens/` 是仓库内置的 Anthropic API 代理,自带 `wake_memory` 插件——直接启动:
 
 ```bash
-export LENS_PLUGIN_PATH=/path/to/wake/lens-plugin
-export LENS_PLUGINS=wake_memory
-.venv/bin/python3 /path/to/lens/lens.py
-
-# 客户端
-export ANTHROPIC_BASE_URL=http://localhost:8765
-claude
+.venv/bin/pip install fastapi uvicorn httpx     # 一次性
+.venv/bin/python3 lens/proxy.py
 ```
 
-每次你在 Claude Code 里说话,wake 都会被调用一次,相关记忆塞进 system 块。最深度的"形状被塑型"形态。
+客户端切到代理:
+
+```bash
+unset HTTP_PROXY HTTPS_PROXY
+export ANTHROPIC_BASE_URL=http://localhost:8765
+export NO_PROXY=localhost,127.0.0.1
+claude  # 或 cursor / 任何用 Anthropic API 的客户端
+```
+
+每次发消息,lens 拦截 → 调 wake 召回 → 把 `[当前相关记忆]` 块塞进 system → 转发给 Anthropic。最深度的"形状被塑型"形态。
+
+如果你在中国大陆访问 api.anthropic.com 需要走代理:
+
+```bash
+LENS_UPSTREAM_PROXY=http://your-proxy:port .venv/bin/python3 lens/proxy.py
+```
+
+`lens/plugins/examples/` 里有两个 hello-world 插件(`echo`、`system_prefix`),可以参考着写自己的。
 
 ### B. 注册成 MCP 工具(模型按需主动调用)
 
@@ -138,12 +153,15 @@ your-kb/
 |---|---|---|
 | `DEEPSEEK_API_KEY` | (必填) | 从 platform.deepseek.com 申请 |
 | `WAKE_OWNER` | (空) | KB 归属人名字,影响 MCP 工具描述里的措辞 |
-| `WAKE_DIR` | (插件自动检测) | wake 安装目录,lens-plugin 用 |
 | `WAKE_TIMEOUT` | `15` | daemon 调用超时(秒) |
+| `LENS_PORT` | `8765` | lens 监听端口 |
+| `LENS_UPSTREAM` | `https://api.anthropic.com` | lens 上游 API |
+| `LENS_UPSTREAM_PROXY` | (空) | lens 上游代理(中国大陆通常需要) |
+| `LENS_PLUGINS` | `wake_memory` | 启用的插件,逗号分隔 |
 
 ## 文件说明
 
-| 文件 | 角色 |
+| 路径 | 角色 |
 |---|---|
 | `daemon.py` | 召回入口。`recall(query) -> str`,也能直接命令行调用 |
 | `system-prompt.md` | 注入给 DeepSeek 的 system prompt,定义"联想"输出风格 |
@@ -151,7 +169,9 @@ your-kb/
 | `build_snapshot.sh` | 从 markdown 目录重建 kb-snapshot.txt |
 | `mcp_server.py` | 把 daemon 包装成 MCP stdio server |
 | `hook.sh` | Claude Code UserPromptSubmit hook |
-| `lens-plugin/wake_memory.py` | lens 集成,负责拦截请求 + 注入记忆 + 剥旧累积 |
+| `lens/proxy.py` | 内置 Anthropic API 代理(集成 A 用) |
+| `lens/plugins/wake_memory.py` | lens 默认插件,负责拦截请求 + 注入记忆 + 剥旧累积 |
+| `lens/plugins/examples/` | hello-world 插件示例(`echo`、`system_prefix`),写自己插件的起点 |
 
 ## 是不是 RAG?
 

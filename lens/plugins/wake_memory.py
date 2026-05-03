@@ -1,26 +1,19 @@
-"""wake_memory - lens 插件:每次请求调 wake daemon 注入相关记忆,顺便剥旧注入避免累积。
+"""wake_memory - lens 内置插件:每次请求调 wake daemon 注入相关记忆,顺便剥旧注入避免累积。
 
-用法:
-    1. 装 lens (https://github.com/<owner>/lens)
-    2. 把 wake 目录加到 LENS_PLUGIN_PATH:
-       export LENS_PLUGIN_PATH=/path/to/wake/lens-plugin
-       export LENS_PLUGINS=wake_memory
-       export WAKE_DIR=/path/to/wake          # 可选,默认从插件文件位置反推
-    3. 启动 lens,Claude Code 走 ANTHROPIC_BASE_URL=http://localhost:8765
+默认启用——`python lens/proxy.py` 不传 LENS_PLUGINS 就会自动加载这个插件。
 """
 
 import logging
 import os
 import re
 import subprocess
-import sys
 from pathlib import Path
 
 log = logging.getLogger("lens.wake_memory")
 
-# wake 根目录:env 优先,否则用插件文件位置反推 (../)
-WAKE_DIR = Path(os.environ.get("WAKE_DIR") or Path(__file__).resolve().parent.parent)
-WAKE_PYTHON = Path(os.environ.get("WAKE_PYTHON") or (WAKE_DIR / ".venv" / "bin" / "python3"))
+# 同 repo:wake 根目录就是 lens/plugins/ 的祖父目录
+WAKE_DIR = Path(__file__).resolve().parents[2]
+WAKE_PYTHON = WAKE_DIR / ".venv" / "bin" / "python3"
 WAKE_DAEMON = WAKE_DIR / "daemon.py"
 WAKE_TIMEOUT = int(os.environ.get("WAKE_TIMEOUT", "15"))
 
