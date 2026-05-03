@@ -51,7 +51,7 @@ cp .env.example .env
 
 ## 三种集成方式
 
-### A. 配合 [lens](https://github.com/) 用(每次对话自动注入)
+### A. 配合 [lens](https://github.com/Fzhiyu1/lens) 用(每次对话自动注入)
 
 ```bash
 export LENS_PLUGIN_PATH=/path/to/wake/lens-plugin
