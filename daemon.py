@@ -4,6 +4,7 @@
 import datetime
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from openai import OpenAI
@@ -11,6 +12,10 @@ from openai import OpenAI
 WAKE_DIR = Path(__file__).parent
 KB_SNAPSHOT = WAKE_DIR / "kb-snapshot.txt"
 SYSTEM_PROMPT = WAKE_DIR / "system-prompt.md"
+KB_INDEX = WAKE_DIR / "kb-index.json"
+
+# 匹配 daemon 输出里的 [[xxx]] wikilink。换行/方括号截断。
+WIKILINK = re.compile(r"\[\[([^\]\n]+?)\]\]")
 
 def load_env():
     env_path = WAKE_DIR / ".env"
@@ -32,6 +37,34 @@ def load_context():
     prompt = SYSTEM_PROMPT.read_text(encoding="utf-8")
     return prompt + "\n\n---\n\n以下是完整知识库：\n\n" + kb
 
+
+def append_refs(recall_text: str) -> str:
+    """扫描 recall 里的 [[xxx]],查 kb-index.json 命中就追加 ---refs--- 区块。
+
+    没 index 文件 / 没命中 → 原样返回,保持 KB-agnostic。
+    """
+    if not KB_INDEX.exists():
+        return recall_text
+
+    try:
+        index = json.loads(KB_INDEX.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return recall_text
+
+    seen = []
+    for m in WIKILINK.finditer(recall_text):
+        name = m.group(1).strip()
+        if name in index and name not in seen:
+            seen.append(name)
+
+    if not seen:
+        return recall_text
+
+    refs_block = "\n\n---refs---\n" + "\n".join(
+        f"{name} = {index[name]}" for name in seen
+    )
+    return recall_text + refs_block
+
 def recall(query: str) -> str:
     client = create_client()
     context = load_context()
@@ -50,6 +83,7 @@ def recall(query: str) -> str:
     finish = response.choices[0].finish_reason
     usage = response.usage
     recall_text = response.choices[0].message.content.strip()
+    recall_text = append_refs(recall_text)
 
     sys.stderr.write(
         f"[wake] finish={finish} "
