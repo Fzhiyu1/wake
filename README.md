@@ -118,6 +118,14 @@ LENS_UPSTREAM_PROXY=http://your-proxy:port .venv/bin/python3 lens/proxy.py
 
 仓库里的 `kb-snapshot.txt` 是 wake 作者的知识库快照(~600KB)——既是教学 demo,也是"形状记忆能产出什么"的实证样本。
 
+> ⚠ **重要前提**
+>
+> `system-prompt.md` 跟 `kb-snapshot.txt` 一样,也是**作者的私人配置**——它假设 KB 是 Obsidian 风格、用 `[[wikilink]]` 命名概念。
+>
+> **装 wake 时必须重写 `system-prompt.md` 来匹配你自己 KB 的风格**。不重写的话,daemon 会按作者 KB 的格式输出 `[[xxx]]`,但你的 KB 里根本没这种东西——完全错位。
+>
+> wake 的**核心**(`daemon.py` + `lens` 这套机制)**跟你的 KB 长什么样无关**。`system-prompt.md` 只是"针对某一份 KB 的输出风格塑造模板",**换 KB 就要换 prompt**。
+
 替换成你自己的:
 
 ```bash
@@ -128,9 +136,10 @@ vi build_snapshot.sh
 # 2. 重建快照
 ./build_snapshot.sh
 
-# 3. 改 system-prompt.md(可选但强烈推荐)
-#    里面的 example queries / KB 概念命名风格是为某一份 KB 调的,
-#    换 KB 后建议至少替换 4-5 个示例,否则 wake 召回质量会打折
+# 3. 重写 system-prompt.md (必须)
+#    现版本是为作者 KB 调的——假设你用 [[wikilink]] 概念命名,
+#    示例 query/output 都基于作者的特定 KB。
+#    你的 KB 风格不同的话,姿态规则可以保留,但示例和格式约定要全换。
 ```
 
 KB 结构推荐(不强制):

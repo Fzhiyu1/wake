@@ -97,12 +97,14 @@ class Plugin:
             return body
 
         # Step 1: 剥掉 messages 里所有累加的旧 hook 注入
+        # 注意:如果一条消息内容完全就是 hook 注入,剥完会变空,
+        # Anthropic API 拒收空 text block,所以 strip 后为空就保留原样。
         stripped_count = 0
         for msg in messages:
             content = msg.get("content")
             if isinstance(content, str):
                 new_content = strip_hook_injection(content)
-                if new_content != content:
+                if new_content != content and new_content.strip():
                     msg["content"] = new_content
                     stripped_count += 1
             elif isinstance(content, list):
@@ -110,7 +112,7 @@ class Plugin:
                     if block.get("type") == "text":
                         text = block.get("text", "")
                         new_text = strip_hook_injection(text)
-                        if new_text != text:
+                        if new_text != text and new_text.strip():
                             block["text"] = new_text
                             stripped_count += 1
 

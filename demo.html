@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>wake — 让 AI 知道你</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #f4eeda;
+  --paper-soft: #f9f5e8;
+  --paper-deep: #ebe2c4;
+  --ink: #1c1612;
+  --ink-soft: #4a3f31;
+  --ink-faint: #8a7e63;
+  --rule: #c9bb98;
+  --accent: #8b1a14;
+  --accent-soft: rgba(139, 26, 20, 0.08);
+  --serif: 'Newsreader', 'Iowan Old Style', 'Times New Roman', Georgia, serif;
+  --mono: 'IBM Plex Mono', 'SF Mono', Menlo, monospace;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 19px;
+  line-height: 1.7;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+body {
+  background-image:
+    radial-gradient(circle at 18% 22%, rgba(139,26,20,0.04) 0%, transparent 45%),
+    radial-gradient(circle at 82% 78%, rgba(74,63,49,0.05) 0%, transparent 55%);
+  min-height: 100vh;
+  position: relative;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.08 0 0 0 0 0.06 0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.55;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  z-index: 1;
+}
+main {
+  position: relative;
+  z-index: 2;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 88px 32px 140px;
+}
+.wide {
+  width: calc(100% + 280px);
+  margin-left: -140px;
+  max-width: 1100px;
+}
+@media (max-width: 1100px) { .wide { width: 100%; margin-left: 0; } }
+
+/* HEADER ============================================== */
+.hero {
+  margin-bottom: 96px;
+  padding-bottom: 52px;
+  border-bottom: 1px solid var(--rule);
+  position: relative;
+}
+.meta {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 36px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.meta .ornament {
+  flex: 1;
+  margin: 0 16px;
+  border-bottom: 1px dotted var(--rule);
+  transform: translateY(-3px);
+}
+h1 {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(40px, 6.4vw, 76px);
+  line-height: 1.05;
+  letter-spacing: -0.022em;
+  margin: 0 0 28px;
+}
+h1 em {
+  font-style: italic;
+  color: var(--accent);
+  font-weight: 400;
+}
+.lede {
+  font-family: var(--serif);
+  font-size: 22px;
+  line-height: 1.5;
+  font-style: italic;
+  color: var(--ink-soft);
+  max-width: 600px;
+  margin: 0;
+}
+.lede::first-letter { color: var(--accent); }
+
+/* SECTION ============================================== */
+section { margin: 88px 0; }
+h2 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 32px;
+  letter-spacing: -0.018em;
+  margin: 0 0 28px;
+  line-height: 1.2;
+}
+.section-num {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  color: var(--accent);
+  font-weight: 500;
+  display: block;
+  margin-bottom: 12px;
+}
+p { margin: 0 0 1.4em; }
+
+/* PULL QUOTE =========================================== */
+.pull {
+  font-family: var(--serif);
+  font-size: 26px;
+  line-height: 1.42;
+  font-style: italic;
+  border-left: 3px solid var(--accent);
+  padding: 6px 0 6px 26px;
+  margin: 56px 0;
+  color: var(--ink-soft);
+}
+.pull strong {
+  color: var(--ink);
+  font-style: normal;
+  font-weight: 500;
+}
+
+/* DROP CAP ============================================= */
+.drop-cap::first-letter {
+  font-family: var(--serif);
+  font-size: 5em;
+  float: left;
+  line-height: 0.8;
+  margin: 8px 10px 0 0;
+  color: var(--accent);
+  font-weight: 300;
+}
+
+/* INLINE CODE ========================================== */
+code {
+  font-family: var(--mono);
+  font-size: 0.82em;
+  background: var(--paper-deep);
+  padding: 1px 6px;
+  border: 1px solid var(--rule);
+  border-radius: 1px;
+}
+
+/* COMPARE DEMO ========================================= */
+.compare {
+  margin: 36px 0;
+}
+.compare-q {
+  background: var(--paper-soft);
+  border: 1px solid var(--rule);
+  padding: 24px 28px;
+  margin-bottom: 16px;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 19px;
+  color: var(--ink);
+  position: relative;
+}
+.compare-q::before {
+  content: '?';
+  position: absolute;
+  top: -10px; left: 22px;
+  background: var(--paper);
+  color: var(--accent);
+  padding: 0 10px;
+  font-style: normal;
+  font-family: var(--serif);
+  font-size: 18px;
+  font-weight: 500;
+}
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+@media (max-width: 720px) { .compare-grid { grid-template-columns: 1fr; } }
+.compare-col {
+  background: var(--paper-soft);
+  border: 1px solid var(--rule);
+  padding: 22px 24px;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  transition: opacity 0.4s;
+}
+.compare-col.you {
+  background: var(--paper);
+  border-color: var(--accent);
+  box-shadow: 4px 4px 0 var(--accent);
+  color: var(--ink);
+}
+.compare-col.loading { opacity: 0.35; }
+.compare-tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+.compare-col.you .compare-tag { color: var(--accent); }
+.preset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 24px 0 8px;
+}
+.preset span {
+  font-family: var(--serif);
+  font-size: 14px;
+  padding: 7px 14px;
+  border: 1px solid var(--rule);
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--ink-soft);
+  background: var(--paper-soft);
+  font-style: italic;
+}
+.preset span:hover { border-color: var(--accent); color: var(--accent); }
+.preset span.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+/* INSTALL ============================================== */
+.install {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 28px 32px;
+  margin: 28px 0;
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.7;
+  position: relative;
+  overflow-x: auto;
+}
+.install .line { display: block; }
+.install .comment { color: var(--ink-faint); }
+.install .accent { color: #d97a73; }
+
+/* FOOTER =============================================== */
+footer {
+  margin-top: 130px;
+  padding-top: 36px;
+  border-top: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--ink-faint);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  text-transform: uppercase;
+}
+footer a {
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent);
+  padding-bottom: 1px;
+}
+footer a:hover { color: var(--accent); }
+
+/* ENTRANCE ============================================= */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.hero, section {
+  animation: fadeUp 0.7s cubic-bezier(.2,.6,.2,1) backwards;
+}
+.hero { animation-delay: 0.05s; }
+section:nth-of-type(1) { animation-delay: 0.25s; }
+section:nth-of-type(2) { animation-delay: 0.45s; }
+section:nth-of-type(3) { animation-delay: 0.65s; }
+section:nth-of-type(4) { animation-delay: 0.85s; }
+</style>
+</head>
+<body>
+<main>
+
+<header class="hero">
+  <div class="meta">
+    <span>wake</span>
+    <span class="ornament"></span>
+    <span>知道你的 AI</span>
+    <span class="ornament"></span>
+    <span>2026</span>
+  </div>
+  <h1>你读过的东西<br>在悄悄改你<em>怎么想事情</em>。</h1>
+  <p class="lede">
+    让你的 AI,也读到那些东西。
+  </p>
+</header>
+
+<section>
+  <span class="section-num">01</span>
+  <h2>看不见的图书馆,一直在工作</h2>
+  <p class="drop-cap">
+    你读完一本好书的几天里,看世界会带着这本书的滤镜。判断一件事,会下意识用书里的概念框一下。这不是"想起书里的句子"——是书悄悄改了你看东西的角度。
+  </p>
+  <p>
+    再过半年,这本书你大概忘了具体内容。但它对你思考的影响还在。这就是大脑里那座"看不见的图书馆"——它平常不出声,但你做任何判断时,它都在。
+  </p>
+  <div class="pull">
+    <strong>你不是在"调用"读过的东西,是被它们塑造着思考。</strong>
+  </div>
+</section>
+
+<section>
+  <span class="section-num">02</span>
+  <h2>现在的 AI 缺这一块</h2>
+  <p>
+    ChatGPT、Claude 知道全世界的知识,但不知道<em>你</em>。你的笔记、你想过的事、你过去得出的结论——这些都在它的视野之外。
+  </p>
+  <p>
+    所以你问它一个问题,它给你的是"通用答案"——综合一万个人意见后的中位数,不是带着你的角度的回答。而且每次新对话你都得从头解释自己:我之前想过 A,我相信 B,我对 C 持保留态度……一会儿就累了。
+  </p>
+  <p>
+    问题不是 AI 不够聪明,是<strong>它不知道你怎么想事情</strong>。
+  </p>
+</section>
+
+<section>
+  <span class="section-num">03</span>
+  <h2>看一下区别</h2>
+  <p>
+    同一个问题,问两种 AI——一个不知道你,一个读过你的笔记。差别看一下:
+  </p>
+  <div class="preset" id="presets">
+    <span class="active" data-q="0">我应该接这个 offer 吗</span>
+    <span data-q="1">今天工作不顺</span>
+    <span data-q="2">周末怎么过</span>
+    <span data-q="3">该不该跟这个朋友疏远</span>
+  </div>
+  <div class="compare">
+    <div class="compare-q" id="cq">我应该接这个 offer 吗?</div>
+    <div class="compare-grid">
+      <div class="compare-col" id="ca">
+        <div class="compare-tag">普通 AI</div>
+        <div id="ca-text">这是个重要决定,建议从这几方面考虑:薪资福利、发展空间、公司文化、工作生活平衡、通勤距离。可以列个 pros &amp; cons 表帮助梳理。</div>
+      </div>
+      <div class="compare-col you" id="cb">
+        <div class="compare-tag">读过你笔记的 AI</div>
+        <div id="cb-text">你之前写过——"重大决定的真问题不是值不值得,是失败了我能不能 ok"。<br><br>你也提过——"换工作的核心问题是,留下我会变成什么样的人,跳过去我会变成什么样的人"。<br><br>pros &amp; cons 表答不了这两个问题。</div>
+      </div>
+    </div>
+  </div>
+  <p>
+    左边是教科书答案,正确但跟你没什么关系。右边把你过去想过的东西**带回来**——它不是查找,是<em>想起</em>。
+  </p>
+  <div class="pull">
+    <strong>不查你的笔记,而是用你过去想过的东西,接着想。</strong>
+  </div>
+</section>
+
+<section>
+  <span class="section-num">04</span>
+  <h2>这事怎么做到的</h2>
+  <p>
+    简单到反直觉:<strong>把你的笔记整个交给 AI</strong>,让它每次回答前都浏览一遍。
+  </p>
+  <p>
+    听起来像不可能——笔记几十万字怎么塞进 AI?但 2024 年起,长上下文 AI 出现(单次能读几百页),加上"读过一次缓存起来"的机制,让这件事变得便宜:**你的笔记从此每次对话都在场,但成本几乎为零**。
+  </p>
+  <p>
+    wake 是这个想法的开源实现。装上后,你的 Claude 每次回答前都会先浏览你的笔记,从你过去想过的东西里浮出跟当前问题有关的部分。你不用主动调用——它在背景里自己工作。
+  </p>
+</section>
+
+<section>
+  <span class="section-num">05</span>
+  <h2>四行命令上手</h2>
+  <div class="install">
+<span class="line">git clone https://github.com/Fzhiyu1/wake.git &amp;&amp; cd wake</span>
+<span class="line">python3 -m venv .venv &amp;&amp; .venv/bin/pip install <span class="accent">openai</span></span>
+<span class="line">cp .env.example .env <span class="comment"># 填 DeepSeek API key,几分钱跑一天</span></span>
+<span class="line">.venv/bin/python3 daemon.py <span class="accent">"我最近在想什么"</span></span>
+  </div>
+  <p>
+    跑出来如果有几条"想起来的东西"(像随手翻你笔记浮上来的片段),而不是百科全书答案,就是工作的。
+  </p>
+  <p>
+    然后看 README 选一种装法——装到 Claude Code、Cursor、或任何用 Claude 的客户端上。装好后,你的 AI 就开始"读过你"了。
+  </p>
+  <div class="pull">
+    <strong>不是给 AI 加一个搜索框,是让它带着你的视角做事。</strong>
+  </div>
+</section>
+
+<footer>
+  <span>wake — MIT License</span>
+  <span><a href="https://github.com/Fzhiyu1/wake" target="_blank">github.com/Fzhiyu1/wake</a></span>
+</footer>
+
+</main>
+<script>
+const compares = [
+  {
+    q: "我应该接这个 offer 吗?",
+    a: "这是个重要决定,建议从这几方面考虑:薪资福利、发展空间、公司文化、工作生活平衡、通勤距离。可以列个 pros & cons 表帮助梳理。",
+    b: `你之前写过——"重大决定的真问题不是值不值得,是失败了我能不能 ok"。<br><br>你也提过——"换工作的核心问题是,留下我会变成什么样的人,跳过去我会变成什么样的人"。<br><br>pros & cons 表答不了这两个问题。`
+  },
+  {
+    q: "今天工作上挺不顺,有点丧。",
+    a: "工作挫折是常见的体验,可以试试:1) 反思具体原因 2) 寻求同事建议 3) 调整心态 4) 适当休息和运动 5) 跟家人朋友倾诉。",
+    b: `你写过——"挫折感往往不是事实糟糕,是预期偏差"。<br><br>这次是不是预期出了问题?如果当初预期低一档,这件事还会让你丧吗?<br><br>另一句你写过的:"先把'现在该做什么'拉出来,情绪后处理"——你下一步具体能做什么?`
+  },
+  {
+    q: "周末该怎么过比较有意义?",
+    a: "推荐几种方式:户外活动(登山骑行)、文化活动(看展听音乐会)、在家放松(阅读看电影)、社交聚会。找出你最喜欢的方式即可。",
+    b: `你写过——"我最累的时候不是工作太多,是没有'什么都不做'的能力"。<br><br>这个周末可能不需要"做什么有意义的事",而是允许自己什么都不做。<br><br>"有意义"本身就是一种压力。`
+  },
+  {
+    q: "该不该跟这个朋友疏远?他最近让我很失望。",
+    a: "建议先尝试沟通,表达你的感受。如果对方不愿改变,适度保持距离也是合理的。重要的是设立健康边界。",
+    b: `你说过——"朋友是镜子,这面镜子让你看见的自己,你想成为吗?"<br><br>不是问"他够不够好",是问"跟他在一起时的我,是我想成为的我吗?"<br><br>如果答案是"不是",疏远不需要理由。`
+  }
+];
+
+const $q = document.getElementById('cq');
+const $a = document.getElementById('ca-text');
+const $b = document.getElementById('cb-text');
+const $colA = document.getElementById('ca');
+const $colB = document.getElementById('cb');
+
+document.querySelectorAll('#presets span').forEach((el, idx) => {
+  el.addEventListener('click', () => {
+    document.querySelectorAll('#presets span').forEach(s => s.classList.remove('active'));
+    el.classList.add('active');
+    $colA.classList.add('loading');
+    $colB.classList.add('loading');
+    setTimeout(() => {
+      const c = compares[idx];
+      $q.textContent = c.q;
+      $a.innerHTML = c.a;
+      $b.innerHTML = c.b;
+      $colA.classList.remove('loading');
+      $colB.classList.remove('loading');
+    }, 280);
+  });
+});
+</script>
+</body>
+</html>

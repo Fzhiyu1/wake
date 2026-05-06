@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Wake - 记忆层守护进程"""
 
+import datetime
+import json
 import os
 import sys
 from pathlib import Path
@@ -47,13 +49,28 @@ def recall(query: str) -> str:
     # 把 finish_reason / token 用量写到 stderr,不污染 stdout(供 lens 转发到 log)
     finish = response.choices[0].finish_reason
     usage = response.usage
+    recall_text = response.choices[0].message.content.strip()
+
     sys.stderr.write(
         f"[wake] finish={finish} "
         f"prompt_tokens={usage.prompt_tokens} "
         f"completion_tokens={usage.completion_tokens}\n"
     )
 
-    return response.choices[0].message.content.strip()
+    # 结构化日志:每次召回追加一条 JSONL,方便事后 grep / 统计
+    log_path = WAKE_DIR / "data" / "recall.jsonl"
+    log_path.parent.mkdir(exist_ok=True)
+    with log_path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps({
+            "ts": datetime.datetime.now().isoformat(),
+            "query": query,
+            "recall": recall_text,
+            "prompt_tokens": usage.prompt_tokens,
+            "completion_tokens": usage.completion_tokens,
+            "finish": finish,
+        }, ensure_ascii=False) + "\n")
+
+    return recall_text
 
 def main():
     if len(sys.argv) < 2:
