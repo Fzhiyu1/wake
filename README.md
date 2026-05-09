@@ -116,7 +116,7 @@ LENS_UPSTREAM_PROXY=http://your-proxy:port .venv/bin/python3 lens/proxy.py
 
 ## 换成你自己的 KB
 
-仓库里的 `kb-snapshot.txt` 是 wake 作者的知识库快照(~600KB)——既是教学 demo,也是"形状记忆能产出什么"的实证样本。
+仓库里的 `kb-snapshot.txt` 是个**空模板**(26 行说明文字),只是占住位置——直接跑 daemon 会按 system-prompt.md 的"无相关记忆"规则全部返回 `——`。要看到真正的"联想",必须替换成你自己的知识库。
 
 > ⚠ **重要前提**
 >
@@ -136,7 +136,12 @@ vi build_snapshot.sh
 # 2. 重建快照
 ./build_snapshot.sh
 
-# 3. 重写 system-prompt.md (必须)
+# 3. (强烈建议) 标 skip-worktree,防止把私人 KB 误推到自己 fork 的公开仓库
+git update-index --skip-worktree kb-snapshot.txt
+#    本地 kb-snapshot.txt 保留你的真实 KB,git status 永远显示干净。
+#    撤销:git update-index --no-skip-worktree kb-snapshot.txt
+
+# 4. 重写 system-prompt.md (必须)
 #    现版本是为作者 KB 调的——假设你用 [[wikilink]] 概念命名,
 #    示例 query/output 都基于作者的特定 KB。
 #    你的 KB 风格不同的话,姿态规则可以保留,但示例和格式约定要全换。
@@ -181,6 +186,7 @@ your-kb/
 | `lens/proxy.py` | 内置 Anthropic API 代理(集成 A 用) |
 | `lens/plugins/wake_memory.py` | lens 默认插件,负责拦截请求 + 注入记忆 + 剥旧累积 |
 | `lens/plugins/examples/` | hello-world 插件示例(`echo`、`system_prefix`),写自己插件的起点 |
+| `docs/demo.html` | 项目 landing 页,可单独部署到 GitHub Pages 或任何静态托管 |
 
 ## 是不是 RAG?
 
