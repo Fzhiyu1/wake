@@ -16,8 +16,8 @@ UPSTREAM = os.environ.get("LENS_UPSTREAM", "https://api.anthropic.com")
 PORT = int(os.environ.get("LENS_PORT", "8765"))
 # 上游代理（可选）。中国大陆用户访问 api.anthropic.com 通常需要走代理。
 UPSTREAM_PROXY = os.environ.get("LENS_UPSTREAM_PROXY") or None
-# 启用的插件（逗号分隔），从 plugins/ 加载。默认 wake_memory（同 repo 自带）。
-PLUGIN_NAMES = [p for p in os.environ.get("LENS_PLUGINS", "wake_memory").split(",") if p.strip()]
+# 启用的插件（逗号分隔），从 plugins/ 加载。默认不加载插件。
+PLUGIN_NAMES = [p for p in os.environ.get("LENS_PLUGINS", "").split(",") if p.strip()]
 
 # 让 plugins.* 这种 import 能解析到 lens/plugins/
 sys.path.insert(0, str(Path(__file__).resolve().parent))

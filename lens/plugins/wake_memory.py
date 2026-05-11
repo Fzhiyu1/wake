@@ -1,6 +1,6 @@
-"""wake_memory - lens 内置插件:每次请求调 wake daemon 注入相关记忆,顺便剥旧注入避免累积。
+"""wake_memory - lens 可选插件:每次请求调 wake daemon 注入相关记忆,顺便剥旧注入避免累积。
 
-默认启用——`python lens/proxy.py` 不传 LENS_PLUGINS 就会自动加载这个插件。
+仅在显式设置 `LENS_PLUGINS=wake_memory` 时加载。
 """
 
 import logging

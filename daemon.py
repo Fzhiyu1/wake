@@ -2,6 +2,7 @@
 """Wake - 记忆层守护进程"""
 
 import datetime
+import hashlib
 import json
 import os
 import re
@@ -68,6 +69,7 @@ def append_refs(recall_text: str) -> str:
 def recall(query: str) -> str:
     client = create_client()
     context = load_context()
+    context_bytes = context.encode("utf-8")
 
     response = client.chat.completions.create(
         model="deepseek-chat",
@@ -85,10 +87,15 @@ def recall(query: str) -> str:
     recall_text = response.choices[0].message.content.strip()
     recall_text = append_refs(recall_text)
 
+    cache_hit_tokens = getattr(usage, "prompt_cache_hit_tokens", None)
+    cache_miss_tokens = getattr(usage, "prompt_cache_miss_tokens", None)
+
     sys.stderr.write(
         f"[wake] finish={finish} "
         f"prompt_tokens={usage.prompt_tokens} "
-        f"completion_tokens={usage.completion_tokens}\n"
+        f"completion_tokens={usage.completion_tokens} "
+        f"cache_hit={cache_hit_tokens} "
+        f"cache_miss={cache_miss_tokens}\n"
     )
 
     # 结构化日志:每次召回追加一条 JSONL,方便事后 grep / 统计
@@ -101,6 +108,10 @@ def recall(query: str) -> str:
             "recall": recall_text,
             "prompt_tokens": usage.prompt_tokens,
             "completion_tokens": usage.completion_tokens,
+            "prompt_cache_hit_tokens": cache_hit_tokens,
+            "prompt_cache_miss_tokens": cache_miss_tokens,
+            "context_sha256": hashlib.sha256(context_bytes).hexdigest(),
+            "context_bytes": len(context_bytes),
             "finish": finish,
         }, ensure_ascii=False) + "\n")
 

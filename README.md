@@ -24,10 +24,10 @@ kb-snapshot.txt (单个文件,约几百 KB)
 DeepSeek 1M context (prompt cache 命中)
     ↓ query → recall(query) 返回联想式片段
     ↓
-三种集成路径任选:
-  1. lens 插件     ── 每次请求自动注入 (最深度集成)
-  2. MCP 工具      ── 模型按需主动调用 (最克制)
-  3. shell hook    ── Claude Code UserPromptSubmit (最轻量)
+推荐默认路径:
+  1. UserPromptSubmit hook ── 用户提交 prompt 时注入一次 (默认推荐)
+  2. MCP 工具              ── 模型按需主动调用 (最克制)
+  3. lens 代理             ── 可选 Anthropic API 代理 / 实验性请求改写层
 ```
 
 ## 快速开始
@@ -37,7 +37,7 @@ git clone https://github.com/Fzhiyu1/wake.git
 cd wake
 python3 -m venv .venv
 .venv/bin/pip install openai                    # daemon / mcp / hook 必须
-.venv/bin/pip install fastapi uvicorn httpx     # 如果要用集成 A (lens 代理)
+.venv/bin/pip install fastapi uvicorn httpx     # 可选: 如果要用集成 C (lens 代理)
 cp .env.example .env
 # 填入 DEEPSEEK_API_KEY,从 https://platform.deepseek.com/ 拿
 ```
@@ -52,33 +52,29 @@ cp .env.example .env
 
 ## 三种集成方式
 
-### A. lens 代理(每次对话自动注入,推荐)
+### A. UserPromptSubmit hook(默认推荐,无 lens 依赖)
 
-`lens/` 是仓库内置的 Anthropic API 代理,自带 `wake_memory` 插件——直接启动:
+推荐默认路径: UserPromptSubmit hook
 
-```bash
-.venv/bin/pip install fastapi uvicorn httpx     # 一次性
-.venv/bin/python3 lens/proxy.py
+默认推荐把 wake 作为 Claude Code 的 UserPromptSubmit hook 使用。hook 只在用户提交 prompt 时触发一次,不会在工具调用续跑时重新召回,也不会改写 Anthropic `/messages` 请求体。
+
+`~/.claude/settings.json` 里加:
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [{
+      "hooks": [{"type": "command", "command": "/path/to/wake/hook.sh"}]
+    }]
+  }
+}
 ```
 
-客户端切到代理:
+每次发消息时把 wake 召回结果以 `[记忆] ...` 形式 stdout 注入。Claude Code 把它当 hook 输出。
 
-```bash
-unset HTTP_PROXY HTTPS_PROXY
-export ANTHROPIC_BASE_URL=http://localhost:8765
-export NO_PROXY=localhost,127.0.0.1
-claude  # 或 cursor / 任何用 Anthropic API 的客户端
-```
+不要同时启用 lens wake_memory 插件和 UserPromptSubmit hook
 
-每次发消息,lens 拦截 → 调 wake 召回 → 把 `[当前相关记忆]` 块塞进 system → 转发给 Anthropic。最深度的"形状被塑型"形态。
-
-如果你在中国大陆访问 api.anthropic.com 需要走代理:
-
-```bash
-LENS_UPSTREAM_PROXY=http://your-proxy:port .venv/bin/python3 lens/proxy.py
-```
-
-`lens/plugins/examples/` 里有两个 hello-world 插件(`echo`、`system_prefix`),可以参考着写自己的。
+两者同时启用会造成双重注入。`wake_memory` 插件还会在每个 `/messages` 请求触发,包括工具调用后的续跑请求,可能覆盖上一轮注入的记忆块并影响 prompt cache。
 
 ### B. 注册成 MCP 工具(模型按需主动调用)
 
@@ -98,21 +94,35 @@ LENS_UPSTREAM_PROXY=http://your-proxy:port .venv/bin/python3 lens/proxy.py
 
 模型会在判断"用户提到他过去想过的东西"时主动调 `memory_recall`。代价:模型可能不调,但调用很精准。
 
-### C. UserPromptSubmit hook(最轻量,无 lens 依赖)
+### C. lens 代理(可选高级/实验路径)
 
-`~/.claude/settings.json` 里加:
+lens 是可选的 Anthropic API 代理
 
-```json
-{
-  "hooks": {
-    "UserPromptSubmit": [{
-      "hooks": [{"type": "command", "command": "/path/to/wake/hook.sh"}]
-    }]
-  }
-}
+`lens/` 可以作为透明 Anthropic API 代理或实验性请求改写层使用。常规 wake 使用不需要 lens。默认不加载任何插件；只有显式设置 `LENS_PLUGINS=wake_memory` 才会启用请求改写注入。
+
+```bash
+.venv/bin/pip install fastapi uvicorn httpx     # 一次性
+LENS_PLUGINS= .venv/bin/python3 lens/proxy.py
 ```
 
-每次发消息时把 wake 召回结果以 `[记忆] ...` 形式 stdout 注入。Claude Code 把它当 hook 输出。
+客户端切到代理:
+
+```bash
+unset HTTP_PROXY HTTPS_PROXY
+export ANTHROPIC_BASE_URL=http://localhost:8765
+export NO_PROXY=localhost,127.0.0.1
+claude  # 或 cursor / 任何用 Anthropic API 的客户端
+```
+
+如果你在中国大陆访问 api.anthropic.com 需要走代理:
+
+```bash
+LENS_UPSTREAM_PROXY=http://your-proxy:port LENS_PLUGINS= .venv/bin/python3 lens/proxy.py
+```
+
+只有在明确要实验 lens 请求改写注入时才启用 `wake_memory` 插件。启用后,lens 会拦截每个 `/messages` 请求 → 调 wake 召回 → 把 `[当前相关记忆]` 块塞进 system → 转发给 Anthropic。
+
+`lens/plugins/examples/` 里有两个 hello-world 插件(`echo`、`system_prefix`),可以参考着写自己的。
 
 ## 换成你自己的 KB
 
@@ -171,7 +181,7 @@ your-kb/
 | `LENS_PORT` | `8765` | lens 监听端口 |
 | `LENS_UPSTREAM` | `https://api.anthropic.com` | lens 上游 API |
 | `LENS_UPSTREAM_PROXY` | (空) | lens 上游代理(中国大陆通常需要) |
-| `LENS_PLUGINS` | `wake_memory` | 启用的插件,逗号分隔 |
+| `LENS_PLUGINS` | (空) | 启用的插件,逗号分隔；默认不加载插件。设为 `wake_memory` 可显式启用 lens 记忆注入 |
 
 ## 文件说明
 
@@ -183,8 +193,8 @@ your-kb/
 | `build_snapshot.sh` | 从 markdown 目录重建 kb-snapshot.txt |
 | `mcp_server.py` | 把 daemon 包装成 MCP stdio server |
 | `hook.sh` | Claude Code UserPromptSubmit hook |
-| `lens/proxy.py` | 内置 Anthropic API 代理(集成 A 用) |
-| `lens/plugins/wake_memory.py` | lens 默认插件,负责拦截请求 + 注入记忆 + 剥旧累积 |
+| `lens/proxy.py` | 内置 Anthropic API 代理,可选高级/实验路径(集成 C) |
+| `lens/plugins/wake_memory.py` | lens 可选插件,负责拦截请求 + 注入记忆 + 剥旧累积 |
 | `lens/plugins/examples/` | hello-world 插件示例(`echo`、`system_prefix`),写自己插件的起点 |
 | `docs/demo.html` | 项目 landing 页,可单独部署到 GitHub Pages 或任何静态托管 |
 
